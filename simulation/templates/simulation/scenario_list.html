@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="fw-bold">Simulaciones</h2>
+  <a href="{% url 'scenario_new' %}" class="btn btn-primary">+ Nueva simulación</a>
+</div>
+
+{% if scenarios %}
+<table class="table table-hover bg-white rounded shadow-sm">
+  <thead class="table-primary">
+    <tr>
+      <th>Nombre</th>
+      <th>Ruta</th>
+      <th>Creado</th>
+      <th>Por</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for s in scenarios %}
+    <tr>
+      <td><a href="{% url 'scenario_detail' s.id %}" class="text-decoration-none">{{ s.name }}</a></td>
+      <td>{{ s.route_key }}</td>
+      <td>{{ s.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ s.created_by.username }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="alert alert-info">No hay simulaciones aún.</div>
+{% endif %}
+{% endblock %}

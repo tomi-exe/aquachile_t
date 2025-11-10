@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="fw-bold mb-3">{{ scenario.name }} ({{ scenario.route_key }})</h2>
+
+<div class="card p-3 mb-3 shadow-sm">
+  <p><strong>Días:</strong> {{ scenario.days }}</p>
+  <p><strong>Q Procesamiento:</strong> {{ scenario.Q_proc_m3h }} m³/h</p>
+  <p><strong>TS In:</strong> {{ scenario.TS_in }}</p>
+  <p><strong>TS Cake:</strong> {{ scenario.TS_cake }}</p>
+</div>
+
+<h4 class="fw-bold mb-2">Resultados generados</h4>
+{% if files %}
+  <ul class="list-group">
+  {% for f in files %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <a href="{{ f.file.url }}" target="_blank">{{ f.kind|title }}</a>
+      <small class="text-muted">{{ f.created_at|date:"Y-m-d H:i" }}</small>
+    </li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <div class="alert alert-warning">No se han generado archivos para esta simulación.</div>
+{% endif %}
+
+<a href="{% url 'scenario_list' %}" class="btn btn-outline-primary mt-3">← Volver</a>
+{% endblock %}
