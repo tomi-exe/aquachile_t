@@ -3,7 +3,7 @@ from django.core.files.base import ContentFile
 
 from .forms import ScenarioForm
 from .models import Scenario, ResultFile
-from .services import simulate_two_trucks
+from .services import simulate_two_trucks, ROUTES
 
 def scenario_list(request):
     qs = Scenario.objects.all().order_by('-created_at')
@@ -25,6 +25,9 @@ def scenario_new(request):
                 eta_captura=scenario.eta_captura,
             )
 
+            scenario.kpis = kpis
+            scenario.save(update_fields=["kpis"])
+
             rf_x = ResultFile.objects.create(scenario=scenario, kind='excel')
             rf_x.file.save(f"{scenario.name}_resumen.xlsx", ContentFile(xlsx.read()))
             rf_p = ResultFile.objects.create(scenario=scenario, kind='grafico')
@@ -38,4 +41,26 @@ def scenario_new(request):
 def scenario_detail(request, scenario_id):
     scenario = get_object_or_404(Scenario, id=scenario_id)
     files = ResultFile.objects.filter(scenario=scenario).order_by('-created_at')
-    return render(request, 'simulation/scenario_detail.html', {'scenario': scenario, 'files': files})
+    route_segments = ROUTES.get(scenario.route_key, [])
+    graph_file = files.filter(kind='grafico').first()
+    excel_file = files.filter(kind='excel').first()
+    kpi_values = scenario.kpis or {}
+    kpi_summary = {
+        'torta': kpi_values.get("Torta producida (t)"),
+        'costo_total': kpi_values.get("Costo total (CLP)"),
+        'energia': kpi_values.get("Energía (kWh)"),
+        'horas_run': kpi_values.get("Horas RUN planta"),
+    }
+    return render(
+        request,
+        'simulation/scenario_detail.html',
+        {
+            'scenario': scenario,
+            'files': files,
+            'route_segments': route_segments,
+            'graph_file': graph_file,
+            'excel_file': excel_file,
+            'kpi_values': kpi_values,
+            'kpi_summary': kpi_summary,
+        },
+    )
