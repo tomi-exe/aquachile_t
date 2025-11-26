@@ -12,14 +12,6 @@
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
       <a class="navbar-brand fw-bold" href="/simulation/">AquaChile</a>
-      <div>
-        {% if user.is_authenticated %}
-          <span class="text-white me-3">Hola, {{ user.username }}</span>
-          <a href="{% url 'logout' %}" class="btn btn-outline-light btn-sm">Salir</a>
-        {% else %}
-          <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm">Ingresar</a>
-        {% endif %}
-      </div>
     </div>
   </nav>
 

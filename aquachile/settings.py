@@ -40,11 +40,6 @@ INSTALLED_APPS = [
      'simulation.apps.SimulationConfig',
 ]
 
-# Autenticación básica
-LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/simulation/'
-LOGOUT_REDIRECT_URL = '/login/'
-
 # Archivos estáticos y media (para Excel/PNG generados)
 import os
 BASE_DIR = Path(__file__).resolve().parent.parent
