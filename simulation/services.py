@@ -6,15 +6,19 @@ import matplotlib.pyplot as plt
 
 ROUTES = {
     "NORTE": [
-        {"from":"Puerto Varas","to":"Curarrehue","km":107.60,"hours":1.79},
+        {"from":"Puerto Varas","to":"Curarrehue","km":357.00,"hours":4.17},
         {"from":"Curarrehue","to":"Catripulli","km":13.43,"hours":0.22},
-        {"from":"Catripulli","to":"Melipeuco","km":34.39,"hours":0.57},
-        {"from":"Melipeuco","to":"Caburga 2","km":22.61,"hours":0.38},
-        {"from":"Caburga 2","to":"Codinhue","km":47.01,"hours":0.78},
+        {"from":"Catripulli","to":"Melipeuco","km":175.00,"hours":2.48},
+        {"from":"Melipeuco","to":"Caburga 2","km":170.00,"hours":2.47},
+        {"from":"Caburga 2","to":"Codihue","km":116.00,"hours":0.78},
     ],
     "SUR": [
-        {"from":"Puerto Varas","to":"Hornopirén","km":158.60,"hours":2.64},
-        {"from":"Hornopirén","to":"Destino_Sur_2","km":50.00,"hours":None},
+        {"from":"Puerto Varas","to":"Hornopirén","km":126.00,"hours":2.43},
+        {"from":"Hornopirén","to":"Pargua","km":167.00,"hours":2.83},
+        {"from":"Pargua","to":"Reloncaví","km":43.96,"hours":0.73},
+        {"from":"Reloncaví","to":"Centro Innovación ATC","km":11.87,"hours":0.20},
+        {"from":"Centro Innovación ATC","to":"Agua Buena","km":80.30,"hours":1.34},
+        {"from":"Agua Buena","to":"Aucar","km":61.47,"hours":1.02},
     ],
 }
 
@@ -24,11 +28,15 @@ CENTERS = {
         {"name":"Catripulli","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
         {"name":"Melipeuco","TS_in":0.05,"m3_demand":6.0,"batea_capacity_t":15.0},
         {"name":"Caburga 2","TS_in":0.05,"m3_demand":4.0,"batea_capacity_t":15.0},
-        {"name":"Codinhue","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Codihue","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
     ],
     "SUR": [
         {"name":"Hornopirén","TS_in":0.05,"m3_demand":6.0,"batea_capacity_t":15.0},
-        {"name":"Destino_Sur_2","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Pargua","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Reloncaví","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Centro Innovación ATC","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Agua Buena","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Aucar","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
     ],
 }
 
