@@ -174,9 +174,96 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
     # Excel con KPI, Log y Stock
     buf_xlsx = io.BytesIO()
     with pd.ExcelWriter(buf_xlsx, engine='xlsxwriter') as writer:
-        pd.DataFrame([kpis]).to_excel(writer, sheet_name="KPI", index=False)
+        df_kpi = pd.DataFrame([kpis])
+        df_kpi.to_excel(writer, sheet_name="KPI", index=False)
         df_log.to_excel(writer, sheet_name="Log", index=False)
         df_stock.to_excel(writer, sheet_name="Stock", index=False)
+
+        # formatting and README for better readability
+        workbook = writer.book
+        header_fmt = workbook.add_format(
+            {"bold": True, "bg_color": "#1F4E78", "font_color": "#FFFFFF", "border": 1}
+        )
+        body_fmt = workbook.add_format({"border": 1})
+        money_fmt = workbook.add_format({"border": 1, "num_format": "#,##0"})
+        number_fmt = workbook.add_format({"border": 1, "num_format": "#,##0.00"})
+        note_title_fmt = workbook.add_format(
+            {"bold": True, "bg_color": "#E2F0D9", "border": 1}
+        )
+        note_fmt = workbook.add_format({"text_wrap": True, "border": 1})
+
+        # KPI sheet styling
+        kpi_ws = writer.sheets["KPI"]
+        kpi_ws.freeze_panes(1, 1)
+        kpi_ws.set_row(0, None, header_fmt)
+        for col_num, col_name in enumerate(df_kpi.columns):
+            width = max(18, len(col_name) + 2)
+            kpi_ws.set_column(col_num, col_num, width, money_fmt if "Costo" in col_name else body_fmt)
+        kpi_ws.set_column(df_kpi.columns.get_loc("Horas RUN planta"), df_kpi.columns.get_loc("Horas RUN planta"), 18, number_fmt)
+        kpi_ws.set_column(df_kpi.columns.get_loc("Torta producida (t)"), df_kpi.columns.get_loc("Stock final (t)"), 18, number_fmt)
+
+        info_start = len(df_kpi) + 2
+        kpi_ws.write(info_start, 0, "Cómo leer este Excel", note_title_fmt)
+        kpi_ws.merge_range(
+            info_start, 1, info_start, 3, "KPI resume la ruta, días, producción, energía y costos consolidados.", note_fmt
+        )
+        kpi_ws.write(info_start + 1, 0, "Hoja Log", note_title_fmt)
+        kpi_ws.merge_range(
+            info_start + 1,
+            1,
+            info_start + 1,
+            3,
+            "Bitácora paso a paso con estados de proceso, viajes de distribución y stock total.",
+            note_fmt,
+        )
+        kpi_ws.write(info_start + 2, 0, "Hoja Stock", note_title_fmt)
+        kpi_ws.merge_range(
+            info_start + 2,
+            1,
+            info_start + 2,
+            3,
+            "Trazabilidad del stock por centro para gráficos y anexos operativos.",
+            note_fmt,
+        )
+
+        # README tab with a compact legend
+        readme_ws = workbook.add_worksheet("README")
+        writer.sheets["README"] = readme_ws
+        readme_ws.set_column("A:A", 26)
+        readme_ws.set_column("B:B", 72)
+        readme_ws.write("A1", "Cómo usar este archivo", header_fmt)
+        readme_ws.write(
+            "B1",
+            "Descarga lista para reportes: KPIs resumidos, bitácora logística y trazabilidad de stock.",
+            note_fmt,
+        )
+        readme_ws.write_row("A3", ["Hoja", "Qué encontrarás"], header_fmt)
+        readme_ws.write_row(
+            "A4",
+            [
+                "KPI",
+                "Resumen ejecutivo: ruta simulada, días, horas RUN, torta producida, tDR, energía, viajes y costos ",
+            ],
+            body_fmt,
+        )
+        readme_ws.write_row(
+            "A5",
+            ["Log", "Cronología de la operación: estados de proceso, kilómetros recorridos, stock total y viajes realizados."],
+            body_fmt,
+        )
+        readme_ws.write_row(
+            "A6",
+            ["Stock", "Serie de tiempo por centro para graficar o anexar en informes de trazabilidad."],
+            body_fmt,
+        )
+        readme_ws.write_row(
+            "A7",
+            [
+                "Tip",
+                "Usa el filtro automático de Excel en cada hoja para explorar horas críticas y validar el cumplimiento DS-30.",
+            ],
+            body_fmt,
+        )
     buf_xlsx.seek(0)
 
     return kpis, df_log, df_stock, buf_png, buf_xlsx

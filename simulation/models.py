@@ -10,6 +10,7 @@ class Scenario(models.Model):
     TS_in = models.FloatField(default=0.05)
     TS_cake = models.FloatField(default=0.25)
     eta_captura = models.FloatField(default=0.97)
+    kpis = models.JSONField(null=True, blank=True)
 
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -21,6 +22,25 @@ class Scenario(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.route_key})"
+
+    def kpi(self, key):
+        return (self.kpis or {}).get(key)
+
+    @property
+    def kpi_torta(self):
+        return self.kpi("Torta producida (t)")
+
+    @property
+    def kpi_costo_total(self):
+        return self.kpi("Costo total (CLP)")
+
+    @property
+    def kpi_energia(self):
+        return self.kpi("Energía (kWh)")
+
+    @property
+    def kpi_horas_run(self):
+        return self.kpi("Horas RUN planta")
 
 class ResultFile(models.Model):
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE)
