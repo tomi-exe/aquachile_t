@@ -1,11 +1,70 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="fw-bold mb-3">Nueva simulación</h2>
-<div class="card shadow-sm p-4">
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success mt-3">Ejecutar simulación</button>
-  </form>
+<div class="row align-items-start g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width:52px;height:52px;">
+        <span class="fs-4">⚙️</span>
+      </div>
+      <div>
+        <p class="text-uppercase small mb-1 text-muted">Simulación QPRESS</p>
+        <h1 class="fw-bold mb-0">Configura una nueva corrida</h1>
+        <p class="text-muted mb-0">Define la ruta, el horizonte de operación y los supuestos técnicos clave para cuantificar logística, consumo y KPIs de la prensa móvil.</p>
+      </div>
+    </div>
+    <div class="card shadow-sm p-4">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}
+              <div class="form-text">{{ field.help_text }}</div>
+            {% endif %}
+            {% for error in field.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+        <div class="col-12">
+          <button type="submit" class="btn btn-success btn-lg w-100">Ejecutar simulación</button>
+          <p class="text-muted small mt-2 mb-0">La ejecución genera un Excel con KPIs (kWh/tDS, polímero, costos) y un gráfico de stock listo para reportes.</p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card shadow-sm p-4 mb-3">
+      <h5 class="fw-bold">¿Qué ingresar?</h5>
+      <ul class="list-unstyled mb-0">
+        <li class="mb-2"><span class="fw-semibold">Nombre:</span> campaña o cliente (ej. "Piloto Chiloé QPRESS").</li>
+        <li class="mb-2"><span class="fw-semibold">Ruta:</span> NORTE o SUR según la macro zona logística.</li>
+        <li class="mb-2"><span class="fw-semibold">Días:</span> duración total del despliegue en terreno.</li>
+        <li class="mb-2"><span class="fw-semibold">Caudal (m³/h):</span> rango esperado de alimentación a la prensa.</li>
+        <li class="mb-2"><span class="fw-semibold">TS alimentación / TS torta:</span> sólidos en entrada y en torta final.</li>
+        <li class="mb-0"><span class="fw-semibold">Eficiencia captura:</span> % de sólidos retenidos (eta).</li>
+      </ul>
+    </div>
+
+    <div class="card shadow-sm p-4 mb-3">
+      <h5 class="fw-bold">Salidas que obtendrás</h5>
+      <ul class="list-unstyled mb-0">
+        <li class="mb-2">Excel con KPIs: kWh/tDS, polímero (kg/tDS, US$/mes), costos logísticos.</li>
+        <li class="mb-2">Trazabilidad completa: bitácora por centro, stock acumulado y viajes.</li>
+        <li class="mb-0">Gráfico de stock (PNG) listo para anexos y presentaciones ejecutivas.</li>
+      </ul>
+    </div>
+
+    <div class="card shadow-sm p-4">
+      <h5 class="fw-bold">Tips rápidos</h5>
+      <ol class="mb-0 ps-3">
+        <li>Ajusta el caudal para ver sensibilidad min–max del caudal de alimentación.</li>
+        <li>Usa TS torta para activar la bandera DS-30 y validar si <strong>ds30_ok</strong> se cumple.</li>
+        <li>Revisa la ruta elegida: impacta km recorridos, tiempo de viaje y costos.</li>
+      </ol>
+    </div>
+  </div>
 </div>
 {% endblock %}

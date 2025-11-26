@@ -1,27 +1,118 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="fw-bold mb-3">{{ scenario.name }} ({{ scenario.route_key }})</h2>
-
-<div class="card p-3 mb-3 shadow-sm">
-  <p><strong>Días:</strong> {{ scenario.days }}</p>
-  <p><strong>Q Procesamiento:</strong> {{ scenario.Q_proc_m3h }} m³/h</p>
-  <p><strong>TS In:</strong> {{ scenario.TS_in }}</p>
-  <p><strong>TS Cake:</strong> {{ scenario.TS_cake }}</p>
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div>
+    <p class="text-uppercase small text-muted mb-1">Simulación QPRESS • {{ scenario.route_key }}</p>
+    <h2 class="fw-bold mb-0">{{ scenario.name }}</h2>
+  </div>
+  <a href="{% url 'scenario_list' %}" class="btn btn-outline-primary">← Volver</a>
 </div>
 
-<h4 class="fw-bold mb-2">Resultados generados</h4>
-{% if files %}
-  <ul class="list-group">
-  {% for f in files %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-      <a href="{{ f.file.url }}" target="_blank">{{ f.kind|title }}</a>
-      <small class="text-muted">{{ f.created_at|date:"Y-m-d H:i" }}</small>
-    </li>
-  {% endfor %}
-  </ul>
-{% else %}
-  <div class="alert alert-warning">No se han generado archivos para esta simulación.</div>
-{% endif %}
+<div class="row g-3 mb-4">
+  <div class="col-md-8">
+    <div class="card shadow-sm p-3 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="fw-bold mb-0">Resumen ejecutivo</h5>
+        <span class="badge bg-primary">{{ scenario.days }} días</span>
+      </div>
+      <p class="text-muted">Sensibiliza el caudal, sólidos y ruta logística para cuantificar energía, polímero y costos de traslado.</p>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="border rounded p-3 bg-light h-100">
+            <p class="text-uppercase small text-muted mb-1">Producción</p>
+            <p class="fs-5 fw-bold mb-1">{{ kpi_summary.torta|default:"-" }}</p>
+            <p class="mb-0 small text-muted">torta acumulada • TS torta {{ scenario.TS_cake }}</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="border rounded p-3 bg-light h-100">
+            <p class="text-uppercase small text-muted mb-1">Costo total</p>
+            <p class="fs-5 fw-bold mb-1">CLP {{ kpi_summary.costo_total|default:"-" }}</p>
+            <p class="mb-0 small text-muted">Energía + transporte</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="border rounded p-3 bg-light h-100">
+            <p class="text-uppercase small text-muted mb-1">Energía</p>
+            <p class="fs-5 fw-bold mb-1">{{ kpi_summary.energia|default:"-" }} kWh</p>
+            <p class="mb-0 small text-muted">{{ kpi_summary.horas_run|default:"-" }} h de operación</p>
+          </div>
+        </div>
+      </div>
+      <hr>
+      <h6 class="fw-bold">Qué entrega esta corrida</h6>
+      <ul class="mb-0 text-muted">
+        <li>KPIs técnicos: kWh/tDS, polímero (kg/tDS, US$/mes) y bandera DS-30 (ds30_ok).</li>
+        <li>Trazabilidad: bitácora de cada centro, stock acumulado y viajes de distribución.</li>
+        <li>Logística cuantificada: km recorridos, horas de tránsito y costos asociados.</li>
+      </ul>
+    </div>
+  </div>
 
-<a href="{% url 'scenario_list' %}" class="btn btn-outline-primary mt-3">← Volver</a>
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="fw-bold">Parámetros usados</h5>
+        <p class="mb-1"><strong>Caudal:</strong> {{ scenario.Q_proc_m3h }} m³/h</p>
+        <p class="mb-1"><strong>TS In:</strong> {{ scenario.TS_in }}</p>
+        <p class="mb-1"><strong>TS torta:</strong> {{ scenario.TS_cake }}</p>
+        <p class="mb-0"><strong>Eficiencia captura:</strong> {{ scenario.eta_captura }}</p>
+      </div>
+      {% if route_segments %}
+      <div class="card-footer bg-light">
+        <p class="fw-semibold mb-2">Ruta {{ scenario.route_key }}</p>
+        <ul class="list-unstyled small mb-0">
+          {% for seg in route_segments %}
+            <li class="mb-1">{{ seg.from }} → {{ seg.to }} • {{ seg.km }} km | {{ seg.hours }} h</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card shadow-sm p-3 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="fw-bold mb-0">Gráfico de stock</h5>
+        {% if graph_file %}
+          <a class="btn btn-sm btn-outline-secondary" href="{{ graph_file.file.url }}" target="_blank">Descargar PNG</a>
+        {% endif %}
+      </div>
+      {% if graph_file %}
+        <img src="{{ graph_file.file.url }}" alt="Gráfico de stock" class="img-fluid rounded border">
+      {% else %}
+        <div class="alert alert-info mb-0">Genera una simulación para visualizar el stock acumulado.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm p-3 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="fw-bold mb-0">Archivos generados</h5>
+        {% if excel_file %}
+          <a class="btn btn-sm btn-success" href="{{ excel_file.file.url }}" target="_blank">Descargar Excel</a>
+        {% endif %}
+      </div>
+      {% if files %}
+        <ul class="list-group list-group-flush">
+        {% for f in files %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold text-capitalize">{{ f.kind }}</div>
+              <div class="small text-muted">{{ f.created_at|date:"Y-m-d H:i" }}</div>
+            </div>
+            <a href="{{ f.file.url }}" target="_blank" class="btn btn-outline-primary btn-sm">Abrir</a>
+          </li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <div class="alert alert-warning mb-0">No se han generado archivos para esta simulación.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
 {% endblock %}

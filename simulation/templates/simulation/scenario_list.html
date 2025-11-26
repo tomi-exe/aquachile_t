@@ -1,27 +1,39 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2 class="fw-bold">Simulaciones</h2>
-  <a href="{% url 'scenario_new' %}" class="btn btn-primary">+ Nueva simulación</a>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <p class="text-uppercase small text-muted mb-1">Centro de simulaciones</p>
+    <h2 class="fw-bold mb-0">Simulaciones QPRESS</h2>
+    <p class="text-muted mb-0">Explora corridas previas, comparte gráficas y descarga KPIs listos para reportes.</p>
+  </div>
+  <a href="{% url 'scenario_new' %}" class="btn btn-primary btn-lg">+ Nueva simulación</a>
 </div>
 
 {% if scenarios %}
-<table class="table table-hover bg-white rounded shadow-sm">
+<table class="table table-hover bg-white rounded shadow-sm align-middle">
   <thead class="table-primary">
     <tr>
       <th>Nombre</th>
       <th>Ruta</th>
       <th>Creado</th>
       <th>Por</th>
+      <th class="text-end">KPIs clave</th>
     </tr>
   </thead>
   <tbody>
   {% for s in scenarios %}
     <tr>
-      <td><a href="{% url 'scenario_detail' s.id %}" class="text-decoration-none">{{ s.name }}</a></td>
-      <td>{{ s.route_key }}</td>
+      <td><a href="{% url 'scenario_detail' s.id %}" class="text-decoration-none fw-semibold">{{ s.name }}</a></td>
+      <td><span class="badge bg-secondary">{{ s.route_key }}</span></td>
       <td>{{ s.created_at|date:"Y-m-d H:i" }}</td>
       <td>{% if s.created_by %}{{ s.created_by.username }}{% else %}-{% endif %}</td>
+      <td class="text-end text-muted small">
+        {% if s.kpis %}
+          Torta: {{ s.kpi_torta }} t · Costo: CLP {{ s.kpi_costo_total }}
+        {% else %}
+          KPIs disponibles al generar resultados
+        {% endif %}
+      </td>
     </tr>
   {% endfor %}
   </tbody>
