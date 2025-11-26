@@ -21,7 +21,7 @@
       <td><a href="{% url 'scenario_detail' s.id %}" class="text-decoration-none">{{ s.name }}</a></td>
       <td>{{ s.route_key }}</td>
       <td>{{ s.created_at|date:"Y-m-d H:i" }}</td>
-      <td>{{ s.created_by.username }}</td>
+      <td>{% if s.created_by %}{{ s.created_by.username }}{% else %}-{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>

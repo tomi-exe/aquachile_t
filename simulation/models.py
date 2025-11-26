@@ -11,7 +11,7 @@ class Scenario(models.Model):
     TS_cake = models.FloatField(default=0.25)
     eta_captura = models.FloatField(default=0.97)
 
-    created_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
