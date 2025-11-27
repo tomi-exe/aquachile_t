@@ -22,11 +22,14 @@ class ScenarioFlowTests(TestCase):
         payload = {
             "name": "Test Simulation",
             "route_key": "SUR",
-            "days": 2,
+            "volume_m3": 30,
             "Q_proc_m3h": 6.0,
             "TS_in": 0.05,
             "TS_cake": 0.25,
             "eta_captura": 0.97,
+            "energy_cost_per_kwh": 120,
+            "transport_cost_per_km": 1300,
+            "dehydration_cost_per_m3": 0,
         }
 
         response = self.client.post(reverse("scenario_new"), payload)
@@ -41,10 +44,14 @@ class ScenarioFlowTests(TestCase):
         kpis, df_log, df_stock, png, xlsx = simulate_two_trucks(
             days=1,
             route_key="SUR",
+            volume_m3=20,
             Q_proc_m3h=6.0,
             TS_in=0.05,
             TS_cake=0.25,
             eta_captura=0.97,
+            energy_cost_per_kwh=120,
+            transport_cost_per_km=1300,
+            dehydration_cost_per_m3=0,
         )
 
         expected_centers = [c["name"] for c in CENTERS["SUR"]]
@@ -52,7 +59,7 @@ class ScenarioFlowTests(TestCase):
             self.assertIn(f"stock_{center}", df_stock.columns)
 
         self.assertEqual(kpis["Ruta"], "SUR")
-        self.assertGreater(df_log["stock_total_t"].iloc[-1], 0)
+        self.assertGreater(df_log["stock_total_t"].max(), 0)
         self.assertGreater(len(png.read()), 0)
         self.assertGreater(len(xlsx.read()), 0)
 

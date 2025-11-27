@@ -15,6 +15,7 @@
     <tr>
       <th>Nombre</th>
       <th>Ruta</th>
+      <th>Volumen (m³)</th>
       <th>Creado</th>
       <th>Por</th>
       <th class="text-end">KPIs clave</th>
@@ -25,6 +26,7 @@
     <tr>
       <td><a href="{% url 'scenario_detail' s.id %}" class="text-decoration-none fw-semibold">{{ s.name }}</a></td>
       <td><span class="badge bg-secondary">{{ s.route_key }}</span></td>
+      <td>{{ s.volume_m3 }}</td>
       <td>{{ s.created_at|date:"Y-m-d H:i" }}</td>
       <td>{% if s.created_by %}{{ s.created_by.username }}{% else %}-{% endif %}</td>
       <td class="text-end text-muted small">
