@@ -25,19 +25,19 @@ ROUTES = {
 
 CENTERS = {
     "NORTE": [
-        {"name":"Curarrehue","TS_in":0.05,"m3_demand":6.0,"batea_capacity_t":15.0},
-        {"name":"Catripulli","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
-        {"name":"Melipeuco","TS_in":0.05,"m3_demand":6.0,"batea_capacity_t":15.0},
-        {"name":"Caburga 2","TS_in":0.05,"m3_demand":4.0,"batea_capacity_t":15.0},
-        {"name":"Codihue","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Curarrehue","predio":"Villarrica","TS_in":0.05,"m3_demand":6.0,"batea_capacity_t":15.0},
+        {"name":"Catripulli","predio":"Pucón","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Melipeuco","predio":"Cunco","TS_in":0.05,"m3_demand":6.0,"batea_capacity_t":15.0},
+        {"name":"Caburga 2","predio":"Caburgua","TS_in":0.05,"m3_demand":4.0,"batea_capacity_t":15.0},
+        {"name":"Codihue","predio":"Temuco","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
     ],
     "SUR": [
-        {"name":"Hornopirén","TS_in":0.05,"m3_demand":6.0,"batea_capacity_t":15.0},
-        {"name":"Pargua","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
-        {"name":"Reloncaví","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
-        {"name":"Centro Innovación ATC","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
-        {"name":"Agua Buena","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
-        {"name":"Aucar","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Hornopirén","predio":"Calbuco","TS_in":0.05,"m3_demand":6.0,"batea_capacity_t":15.0},
+        {"name":"Pargua","predio":"Chacao","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Reloncaví","predio":"Cochamó","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Centro Innovación ATC","predio":"Rilán","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Agua Buena","predio":"Chonchi","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
+        {"name":"Aucar","predio":"Quinchao","TS_in":0.05,"m3_demand":5.0,"batea_capacity_t":15.0},
     ],
 }
 
@@ -51,12 +51,26 @@ def _press_step(Q_m3h, TS_in, TS_cake, eta, rho, step_min):
     cake_tph = mSS_cake / TS_cake
     return mSS_cake*h, cake_tph*h  # (tDR_step, torta_step)
 
-def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura,
-                        truck_speed_kmh=60.0, step_min=10, seed=123):
+def simulate_two_trucks(
+    days,
+    route_key,
+    volume_m3,
+    Q_proc_m3h,
+    TS_in,
+    TS_cake,
+    eta_captura,
+    energy_cost_per_kwh=120.0,
+    transport_cost_per_km=1300.0,
+    dehydration_cost_per_m3=0.0,
+    truck_speed_kmh=60.0,
+    step_min=10,
+    seed=123,
+):
     np.random.seed(seed)
     rho = 1.0
     step = step_min
-    steps_total = int(days*24*60/step)
+    target_volume = max(volume_m3, 0.0)
+    volume_remaining = target_volume
     start_time = datetime(2025,10,1,8,0)
 
     route = ROUTES[route_key]
@@ -77,8 +91,12 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
     dist_payload=0.0; dist_to=None
 
     rows=[]
-    for s in range(steps_total):
+    max_minutes = int(((target_volume / max(Q_proc_m3h, 1e-6)) * 60) + 24*60)
+    max_steps = max(int(max_minutes/step), 1)
+    s = 0
+    while s < max_steps:
         tstamp = start_time + timedelta(minutes=s*step)
+        s += 1
 
         # planta
         if proc_state=="DRIVE":
@@ -90,18 +108,27 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
             if proc_time<=0:
                 proc_state="RUN"
         elif proc_state=="RUN":
-            Q_use = min(Q_proc_m3h, dem.get(current_to, Q_proc_m3h))
-            tDR, cake = _press_step(Q_use, TSmap.get(current_to,TS_in), TS_cake, eta_captura, rho, step)
-            free = cap[current_to]-stock[current_to]
-            add = min(cake, max(free,0.0))
-            stock[current_to]+=add
-            frac = add/cake if cake>1e-9 else 0.0
-            proc_cake += add; proc_tDR += tDR*frac; proc_kWh += 8*(tDR*frac); proc_hours_run += step/60
-            if stock[current_to] >= cap[current_to]*0.95 and proc_ptr < len(route)-1:
-                proc_ptr += 1
-                current_to = route[proc_ptr]["to"]
-                proc_state="DRIVE"; proc_time=_tramo_min(route[proc_ptr], truck_speed_kmh)
-                proc_km += route[proc_ptr]["km"]
+            if volume_remaining <= 0:
+                proc_state = "IDLE"
+            else:
+                Q_use = min(Q_proc_m3h, dem.get(current_to, Q_proc_m3h))
+                volume_step = min(Q_use * step/60, volume_remaining)
+                volume_remaining -= volume_step
+                # recalcular caudal efectivo por si queda menos volumen
+                Q_effective = volume_step * 60 / step if step > 0 else 0
+                tDR, cake = _press_step(Q_effective, TSmap.get(current_to,TS_in), TS_cake, eta_captura, rho, step)
+                free = cap[current_to]-stock[current_to]
+                add = min(cake, max(free,0.0))
+                stock[current_to]+=add
+                frac = add/cake if cake>1e-9 else 0.0
+                proc_cake += add; proc_tDR += tDR*frac; proc_kWh += 8*(tDR*frac); proc_hours_run += step/60
+                if stock[current_to] >= cap[current_to]*0.95 and proc_ptr < len(route)-1:
+                    proc_ptr += 1
+                    current_to = route[proc_ptr]["to"]
+                    proc_state="DRIVE"; proc_time=_tramo_min(route[proc_ptr], truck_speed_kmh)
+                    proc_km += route[proc_ptr]["km"]
+        elif proc_state=="IDLE":
+            pass
 
         # distribución
         if dist_state=="IDLE":
@@ -145,18 +172,25 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
             row[f"stock_{c['name']}"] = round(stock[c['name']],3)
         rows.append(row)
 
+        # condición de término: sin volumen pendiente y stock en cero y logística en reposo
+        if volume_remaining <= 1e-6 and all(v <= 1e-3 for v in stock.values()) and dist_state=="IDLE" and proc_state in ("IDLE","DRIVE","SETUP"):
+            if dist_state=="IDLE" and proc_state=="IDLE":
+                break
+
     # costos
-    CLP_per_kWh=120; CLP_per_km=800; CLP_per_ton_km=65
+    CLP_per_kWh=energy_cost_per_kwh; CLP_per_km=transport_cost_per_km; CLP_per_ton_km=0
     energy_cost = proc_kWh * CLP_per_kWh
     trans_cost  = dist_km * CLP_per_km + dist_ton_km * CLP_per_ton_km
-    total_cost  = energy_cost + trans_cost
+    dehydration_cost = target_volume * dehydration_cost_per_m3
+    total_cost  = energy_cost + trans_cost + dehydration_cost
 
     kpis = {
-        "Ruta": route_key, "Días": days, "Horas RUN planta": round(proc_hours_run,2),
+        "Ruta": route_key, "Volumen procesado (m3)": round(target_volume,1), "Horas RUN planta": round(proc_hours_run,2),
         "Torta producida (t)": round(proc_cake,2), "tDR (t)": round(proc_tDR,2),
         "Energía (kWh)": round(proc_kWh,1), "Viajes distribución": dist_trips,
         "Km distribución": round(dist_km,1), "Km recolección": round(proc_km,1),
         "Costo energía (CLP)": round(energy_cost), "Costo transporte (CLP)": round(trans_cost),
+        "Costo deshidratación (CLP)": round(dehydration_cost),
         "Costo total (CLP)": round(total_cost), "Stock final (t)": round(sum(stock.values()),2)
     }
     df_log = pd.DataFrame(rows)
@@ -165,10 +199,16 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
     df_stock["stock_total_t"] = df_log["stock_total_t"]
 
     # gráfico PNG (stock total)
-    fig, ax = plt.subplots(figsize=(6,3))
-    ax.plot(df_log["time"], df_log["stock_total_t"])
-    ax.set_title("Stock total en centros (t)")
-    ax.set_xlabel("Tiempo"); ax.set_ylabel("t")
+    fig, ax = plt.subplots(figsize=(8,4))
+    for c in centers:
+        ax.plot(df_log["time"], df_log[f"stock_{c['name']}"] , alpha=0.4, label=c['name']+
+                (f" → {c.get('predio')}" if c.get('predio') else ""))
+    ax.plot(df_log["time"], df_log["stock_total_t"], color="#0f3057", linewidth=2.2, label="Total")
+    ax.fill_between(df_log["time"], 0, df_log["stock_total_t"], color="#dbe8ff", alpha=0.4)
+    ax.set_title("Stock en pisciculturas y predios (t)")
+    ax.set_xlabel("Tiempo"); ax.set_ylabel("Toneladas")
+    ax.legend(loc="upper left", fontsize=8)
+    ax.grid(True, linestyle='--', alpha=0.3)
     buf_png = io.BytesIO()
     fig.tight_layout(); fig.savefig(buf_png, format='png'); plt.close(fig)
     buf_png.seek(0)
@@ -181,7 +221,7 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
     costo_unitario_km = total_cost / max(total_km, 1e-6)
     costo_unitario_viaje = total_cost / max(dist_trips, 1) if dist_trips else 0
     energia_por_t = proc_kWh / max(proc_cake, 1e-6)
-    costo_medio = (energy_cost + trans_cost) / 2
+    costo_medio = (energy_cost + trans_cost + dehydration_cost) / 3
 
     df_kpi = pd.DataFrame([kpis])
 
@@ -234,8 +274,9 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
 
         breakdown_data = [
             ("Energía", energy_cost, energy_cost / total_cost if total_cost else 0, energy_cost - costo_medio, "Consumo energético en planta."),
-            ("Transporte", trans_cost, trans_cost / total_cost if total_cost else 0, trans_cost - costo_medio, "Traslado y tonelada-km de distribución."),
-            ("Total", total_cost, 1, total_cost - costo_medio, "Suma de energía + transporte."),
+            ("Transporte", trans_cost, trans_cost / total_cost if total_cost else 0, trans_cost - costo_medio, "Traslado (ida y vuelta) del camión."),
+            ("Servicio deshidratación", dehydration_cost, dehydration_cost / total_cost if total_cost else 0, dehydration_cost - costo_medio, "Cobro por m³ procesado."),
+            ("Total", total_cost, 1, total_cost - costo_medio, "Suma de energía + transporte + servicio."),
         ]
         for row_offset, (name, amount, pct, delta, desc) in enumerate(breakdown_data, start=11):
             resumen_ws.write(row_offset, 0, name)
@@ -288,6 +329,7 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
         chart = workbook.add_chart({"type": "column", "subtype": "stacked"})
         chart.add_series({"name": "Energía", "values": f"=Resumen!$B$12:$B$12"})
         chart.add_series({"name": "Transporte", "values": f"=Resumen!$B$13:$B$13"})
+        chart.add_series({"name": "Servicio", "values": f"=Resumen!$B$14:$B$14"})
         chart.set_title({"name": "Composición de costos"})
         chart.set_x_axis({"visible": False})
         chart.set_y_axis({"name": "CLP"})
@@ -295,7 +337,7 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
 
         # notas y definiciones para lectores no técnicos
         resumen_ws.write("A29", "Notas y definiciones", header_fmt)
-        resumen_ws.write("A30", "RUN: Horas efectivas de operación de planta.\nTDR: Toneladas de Densidad Real (sólidos recuperados).\nLos costos se muestran en CLP con separador de miles. Se incluye desglose energético y de transporte, además de métricas unitarias para facilitar comparaciones entre rutas.", note_fmt)
+        resumen_ws.write("A30", "RUN: Horas efectivas de operación de planta.\nTDR: Toneladas de Densidad Real (sólidos recuperados).\nLos costos se muestran en CLP con separador de miles. Se incluye desglose energético, transporte y servicio de deshidratación, además de métricas unitarias para facilitar comparaciones entre rutas.", note_fmt)
         resumen_ws.set_column("A:A", 18)
         resumen_ws.set_column("B:B", 16)
         resumen_ws.set_column("C:C", 20)
@@ -309,7 +351,7 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
             kpi_ws.write(0, col, name, header_fmt)
             description = {
                 "Ruta": "Ruta seleccionada (NORTE o SUR)",
-                "Días": "Duración total de la simulación (días)",
+                "Volumen procesado (m3)": "Volumen total de lodos húmedos alimentados",
                 "Horas RUN planta": "Horas efectivas de operación de planta",
                 "Torta producida (t)": "Toneladas de torta producida",
                 "tDR (t)": "Toneladas de sólidos recuperados",
@@ -318,8 +360,9 @@ def simulate_two_trucks(days, route_key, Q_proc_m3h, TS_in, TS_cake, eta_captura
                 "Km distribución": "Km recorridos en distribución",
                 "Km recolección": "Km recorridos durante la recolección",
                 "Costo energía (CLP)": "Costo asociado al consumo de energía",
-                "Costo transporte (CLP)": "Costo asociado a transporte y tonelada-km",
-                "Costo total (CLP)": "Suma de energía y transporte",
+                "Costo transporte (CLP)": "Costo asociado a transporte (CLP/km)",
+                "Costo deshidratación (CLP)": "Cobro del servicio externo por volumen", 
+                "Costo total (CLP)": "Suma de energía, transporte y servicio",
                 "Stock final (t)": "Stock remanente al cierre",
             }.get(name, "")
             kpi_ws.write(1, col, description, note_fmt)

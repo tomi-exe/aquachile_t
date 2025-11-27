@@ -13,9 +13,9 @@
     <div class="card shadow-sm p-3 h-100">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h5 class="fw-bold mb-0">Resumen ejecutivo</h5>
-        <span class="badge bg-primary">{{ scenario.days }} días</span>
+        <span class="badge bg-primary">{{ scenario.volume_m3 }} m³ · {{ scenario.Q_proc_m3h }} m³/h</span>
       </div>
-      <p class="text-muted">Sensibiliza el caudal, sólidos y ruta logística para cuantificar energía, polímero y costos de traslado.</p>
+      <p class="text-muted">Sensibiliza el volumen inicial, sólidos y ruta logística para cuantificar energía, servicio de deshidratación y costos de traslado.</p>
       <div class="row g-3">
         <div class="col-md-4">
           <div class="border rounded p-3 bg-light h-100">
@@ -28,7 +28,7 @@
           <div class="border rounded p-3 bg-light h-100">
             <p class="text-uppercase small text-muted mb-1">Costo total</p>
             <p class="fs-5 fw-bold mb-1">CLP {{ kpi_summary.costo_total|default:"-" }}</p>
-            <p class="mb-0 small text-muted">Energía + transporte</p>
+            <p class="mb-0 small text-muted">Energía + transporte + deshidratación</p>
           </div>
         </div>
         <div class="col-md-4">
@@ -53,10 +53,14 @@
     <div class="card shadow-sm h-100">
       <div class="card-body">
         <h5 class="fw-bold">Parámetros usados</h5>
+        <p class="mb-1"><strong>Volumen inicial:</strong> {{ scenario.volume_m3 }} m³</p>
         <p class="mb-1"><strong>Caudal:</strong> {{ scenario.Q_proc_m3h }} m³/h</p>
         <p class="mb-1"><strong>TS In:</strong> {{ scenario.TS_in }}</p>
         <p class="mb-1"><strong>TS torta:</strong> {{ scenario.TS_cake }}</p>
-        <p class="mb-0"><strong>Eficiencia captura:</strong> {{ scenario.eta_captura }}</p>
+        <p class="mb-1"><strong>Eficiencia captura:</strong> {{ scenario.eta_captura }}</p>
+        <p class="mb-1"><strong>Costo energía:</strong> CLP {{ scenario.energy_cost_per_kwh }} /kWh</p>
+        <p class="mb-1"><strong>Costo camión:</strong> CLP {{ scenario.transport_cost_per_km }} /km</p>
+        <p class="mb-0"><strong>Servicio deshidratación:</strong> CLP {{ scenario.dehydration_cost_per_m3 }} /m³</p>
       </div>
       {% if route_segments %}
       <div class="card-footer bg-light">
@@ -66,6 +70,15 @@
             <li class="mb-1">{{ seg.from }} → {{ seg.to }} • {{ seg.km }} km | {{ seg.hours }} h</li>
           {% endfor %}
         </ul>
+        {% if centers %}
+          <hr class="my-2">
+          <p class="fw-semibold mb-1">Piscicultura → Predio destino</p>
+          <ul class="list-unstyled small mb-0">
+            {% for c in centers %}
+              <li class="mb-1">{{ c.name }} → {{ c.predio }} (cap. {{ c.batea_capacity_t }} t)</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
       </div>
       {% endif %}
     </div>
