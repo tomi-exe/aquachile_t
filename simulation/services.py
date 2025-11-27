@@ -80,6 +80,17 @@ def simulate_two_trucks(
     cap   = {c["name"]: c.get("batea_capacity_t",15.0) for c in centers}
     dem   = {c["name"]: c.get("m3_demand",Q_proc_m3h) for c in centers}
     TSmap = {c["name"]: c.get("TS_in",TS_in) for c in centers}
+    produced_cum = {c["name"]: 0.0 for c in centers}
+
+    total_dem = sum(dem.values()) if dem else 0
+    expected_cake_total_t = target_volume * rho * TS_in * eta_captura / max(TS_cake, 1e-6)
+    target_alloc = {
+        c["name"]: (
+            expected_cake_total_t * (dem[c["name"]] / total_dem)
+            if total_dem > 0 else expected_cake_total_t / len(centers)
+        )
+        for c in centers
+    }
 
     # planta
     proc_state="DRIVE"; proc_time=_tramo_min(route[0], truck_speed_kmh); proc_ptr=0
@@ -88,10 +99,12 @@ def simulate_two_trucks(
 
     # distribución
     dist_state="IDLE"; dist_time=0; dist_km=0.0; dist_ton_km=0.0; dist_trips=0
-    dist_payload=0.0; dist_to=None
+    dist_payload=0.0; dist_to=None; dist_leg_km=0.0
 
     rows=[]
-    max_minutes = int(((target_volume / max(Q_proc_m3h, 1e-6)) * 60) + 24*60)
+    # permitir terminar distribución aún con rutas largas: tiempo de proceso + 72h buffer
+    route_minutes = sum(_tramo_min(tr, truck_speed_kmh) for tr in route)
+    max_minutes = ((target_volume / max(Q_proc_m3h, 1e-6)) * 60) + 72*60 + route_minutes
     max_steps = max(int(max_minutes/step), 1)
     s = 0
     while s < max_steps:
@@ -120,9 +133,12 @@ def simulate_two_trucks(
                 free = cap[current_to]-stock[current_to]
                 add = min(cake, max(free,0.0))
                 stock[current_to]+=add
+                produced_cum[current_to] += add
                 frac = add/cake if cake>1e-9 else 0.0
                 proc_cake += add; proc_tDR += tDR*frac; proc_kWh += 8*(tDR*frac); proc_hours_run += step/60
-                if stock[current_to] >= cap[current_to]*0.95 and proc_ptr < len(route)-1:
+                target_cake = min(cap[current_to]*0.95, target_alloc.get(current_to, 0.0)*1.05)
+                target_cake = max(target_cake, 0.5)  # asegurar salida aun con volúmenes bajos
+                if produced_cum[current_to] >= target_cake and proc_ptr < len(route)-1:
                     proc_ptr += 1
                     current_to = route[proc_ptr]["to"]
                     proc_state="DRIVE"; proc_time=_tramo_min(route[proc_ptr], truck_speed_kmh)
@@ -141,21 +157,24 @@ def simulate_two_trucks(
                 for tr in route:
                     km+=tr["km"]; tmin+=_tramo_min(tr, truck_speed_kmh)
                     if tr["to"]==pick: break
-                dist_state="DRIVE_PICK"; dist_time=tmin; dist_km+=km; dist_to=pick; dist_km_ida=km
+                dist_state="DRIVE_PICK"; dist_time=tmin; dist_to=pick; dist_km_ida=km; dist_leg_km=km
         elif dist_state=="DRIVE_PICK":
             dist_time -= step
             if dist_time<=0:
+                dist_km += dist_leg_km
                 dist_state="LOAD"; dist_time=30
         elif dist_state=="LOAD":
             dist_time -= step
             if dist_time<=0:
                 dist_payload = stock[dist_to]; stock[dist_to]=0.0; dist_trips+=1
                 km=dist_km_ida; tmin=int(km/truck_speed_kmh*60)
-                dist_km += km; dist_time=tmin; dist_state="DRIVE_DROP"
+                dist_leg_km = km
+                dist_time=tmin; dist_state="DRIVE_DROP"
                 dist_ton_km += dist_payload * km
         elif dist_state=="DRIVE_DROP":
             dist_time -= step
             if dist_time<=0:
+                dist_km += dist_leg_km
                 dist_state="UNLOAD"; dist_time=30
         elif dist_state=="UNLOAD":
             dist_time -= step
@@ -198,20 +217,29 @@ def simulate_two_trucks(
     df_stock = df_log[["time"]+stock_cols].copy()
     df_stock["stock_total_t"] = df_log["stock_total_t"]
 
-    # gráfico PNG (stock total)
-    fig, ax = plt.subplots(figsize=(8,4))
+    # gráfico PNG: total consolidado
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(df_log["time"], df_log["stock_total_t"], color="#0f3057", linewidth=2.4)
+    ax.fill_between(df_log["time"], 0, df_log["stock_total_t"], color="#dbe8ff", alpha=0.5)
+    ax.set_title("Stock total en pisciculturas y predios (t)")
+    ax.set_xlabel("Tiempo"); ax.set_ylabel("Toneladas")
+    ax.grid(True, linestyle='--', alpha=0.3)
+    buf_png_total = io.BytesIO()
+    fig.tight_layout(); fig.savefig(buf_png_total, format='png'); plt.close(fig)
+    buf_png_total.seek(0)
+
+    # gráfico PNG: detalle por piscicultura
+    fig, ax = plt.subplots(figsize=(8, 4))
     for c in centers:
-        ax.plot(df_log["time"], df_log[f"stock_{c['name']}"] , alpha=0.4, label=c['name']+
-                (f" → {c.get('predio')}" if c.get('predio') else ""))
-    ax.plot(df_log["time"], df_log["stock_total_t"], color="#0f3057", linewidth=2.2, label="Total")
-    ax.fill_between(df_log["time"], 0, df_log["stock_total_t"], color="#dbe8ff", alpha=0.4)
-    ax.set_title("Stock en pisciculturas y predios (t)")
+        label = c['name'] + (f" → {c.get('predio')}" if c.get('predio') else "")
+        ax.plot(df_log["time"], df_log[f"stock_{c['name']}"] , linewidth=1.4, label=label)
+    ax.set_title("Stock por piscicultura y predio (t)")
     ax.set_xlabel("Tiempo"); ax.set_ylabel("Toneladas")
     ax.legend(loc="upper left", fontsize=8)
     ax.grid(True, linestyle='--', alpha=0.3)
-    buf_png = io.BytesIO()
-    fig.tight_layout(); fig.savefig(buf_png, format='png'); plt.close(fig)
-    buf_png.seek(0)
+    buf_png_centers = io.BytesIO()
+    fig.tight_layout(); fig.savefig(buf_png_centers, format='png'); plt.close(fig)
+    buf_png_centers.seek(0)
 
     # Excel con KPI, Log y Stock
     buf_xlsx = io.BytesIO()
@@ -391,4 +419,4 @@ def simulate_two_trucks(
 
     buf_xlsx.seek(0)
 
-    return kpis, df_log, df_stock, buf_png, buf_xlsx
+    return kpis, df_log, df_stock, buf_png_total, buf_png_centers, buf_xlsx

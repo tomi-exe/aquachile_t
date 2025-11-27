@@ -89,13 +89,35 @@
   <div class="col-lg-8">
     <div class="card shadow-sm p-3 h-100">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="fw-bold mb-0">Gráfico de stock</h5>
-        {% if graph_file %}
-          <a class="btn btn-sm btn-outline-secondary" href="{{ graph_file.file.url }}" target="_blank">Descargar PNG</a>
-        {% endif %}
+        <h5 class="fw-bold mb-0">Gráficos de stock</h5>
+        <div class="d-flex gap-2">
+          {% if graph_total_file %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ graph_total_file.file.url }}" target="_blank">Total</a>
+          {% endif %}
+          {% if graph_centers_file %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ graph_centers_file.file.url }}" target="_blank">Pisciculturas</a>
+          {% endif %}
+        </div>
       </div>
-      {% if graph_file %}
-        <img src="{{ graph_file.file.url }}" alt="Gráfico de stock" class="img-fluid rounded border">
+      {% if graph_total_file or graph_centers_file %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <p class="fw-semibold small mb-1">Stock total</p>
+            {% if graph_total_file %}
+              <img src="{{ graph_total_file.file.url }}" alt="Gráfico stock total" class="img-fluid rounded border">
+            {% else %}
+              <div class="alert alert-info mb-0">Genera una simulación para visualizar el stock total.</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <p class="fw-semibold small mb-1">Detalle por piscicultura</p>
+            {% if graph_centers_file %}
+              <img src="{{ graph_centers_file.file.url }}" alt="Gráfico stock por piscicultura" class="img-fluid rounded border">
+            {% else %}
+              <div class="alert alert-info mb-0">Genera una simulación para visualizar el detalle por piscicultura.</div>
+            {% endif %}
+          </div>
+        </div>
       {% else %}
         <div class="alert alert-info mb-0">Genera una simulación para visualizar el stock acumulado.</div>
       {% endif %}

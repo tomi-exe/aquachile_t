@@ -17,7 +17,7 @@ def scenario_new(request):
             scenario.days = 1
             scenario.save()
 
-            kpis, df_log, df_stock, png, xlsx = simulate_two_trucks(
+            kpis, df_log, df_stock, png_total, png_centers, xlsx = simulate_two_trucks(
                 days=scenario.days,
                 volume_m3=scenario.volume_m3,
                 route_key=scenario.route_key,
@@ -35,8 +35,10 @@ def scenario_new(request):
 
             rf_x = ResultFile.objects.create(scenario=scenario, kind='excel')
             rf_x.file.save(f"{scenario.name}_resumen.xlsx", ContentFile(xlsx.read()))
-            rf_p = ResultFile.objects.create(scenario=scenario, kind='grafico')
-            rf_p.file.save(f"{scenario.name}_stock.png", ContentFile(png.read()))
+            rf_p_total = ResultFile.objects.create(scenario=scenario, kind='grafico_total')
+            rf_p_total.file.save(f"{scenario.name}_stock_total.png", ContentFile(png_total.read()))
+            rf_p_centers = ResultFile.objects.create(scenario=scenario, kind='grafico_pisciculturas')
+            rf_p_centers.file.save(f"{scenario.name}_stock_pisciculturas.png", ContentFile(png_centers.read()))
 
             return redirect('scenario_detail', scenario_id=scenario.id)
     else:
@@ -48,7 +50,8 @@ def scenario_detail(request, scenario_id):
     files = ResultFile.objects.filter(scenario=scenario).order_by('-created_at')
     route_segments = ROUTES.get(scenario.route_key, [])
     centers = CENTERS.get(scenario.route_key, [])
-    graph_file = files.filter(kind='grafico').first()
+    graph_total_file = files.filter(kind='grafico_total').first()
+    graph_centers_file = files.filter(kind='grafico_pisciculturas').first()
     excel_file = files.filter(kind='excel').first()
     kpi_values = scenario.kpis or {}
     kpi_summary = {
@@ -65,7 +68,8 @@ def scenario_detail(request, scenario_id):
             'files': files,
             'route_segments': route_segments,
             'centers': centers,
-            'graph_file': graph_file,
+            'graph_total_file': graph_total_file,
+            'graph_centers_file': graph_centers_file,
             'excel_file': excel_file,
             'kpi_values': kpi_values,
             'kpi_summary': kpi_summary,

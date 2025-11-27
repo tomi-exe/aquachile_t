@@ -48,7 +48,7 @@ class Scenario(models.Model):
 
 class ResultFile(models.Model):
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE)
-    kind = models.CharField(max_length=20)  # 'excel' | 'grafico'
+    kind = models.CharField(max_length=20)  # 'excel' | 'grafico_total' | 'grafico_pisciculturas'
     file = models.FileField(upload_to='results/')
     created_at = models.DateTimeField(auto_now_add=True)
 
